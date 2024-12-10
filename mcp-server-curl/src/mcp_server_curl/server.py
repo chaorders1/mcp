@@ -64,14 +64,11 @@ class TemplateManager:
                 "auth_env_key": "FIRECRAWL_API_KEY"
             },
             "railway": {
-                "base_url": os.getenv("RAILWAY_API_URL", "https://backboard.railway.app/api/v2"),
+                "base_url": os.getenv("RAILWAY_API_URL", "https://railway1-production-9936.up.railway.app"),
                 "endpoints": {
                     "file": "/file",
                     "status": "/status"
-                },
-                "auth_type": "Bearer",
-                "auth_header": True,
-                "auth_env_key": "RAILWAY_API_TOKEN"
+                }
             }
         }
     
@@ -256,9 +253,20 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "file_path": {"type": "string"},
-                    "format": {"type": "string", "optional": True},
-                    "options": {"type": "object", "optional": True},
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the file to process (e.g., data/example.md)"
+                    },
+                    "format": {
+                        "type": "string",
+                        "optional": True,
+                        "description": "Output format for the processed file"
+                    },
+                    "options": {
+                        "type": "object",
+                        "optional": True,
+                        "description": "Additional processing options"
+                    },
                 },
                 "required": ["file_path"],
             },
