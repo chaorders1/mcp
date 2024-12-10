@@ -160,4 +160,59 @@ class RailWayAnalyzeStatusHandler(CurlHandler):
         
         return command 
 
+class RailwayAnalyzeHandler(CurlHandler):
+    # Default timeout for analysis
+    DEFAULT_TIMEOUT = 120
+    
+    @property
+    def name(self) -> str:
+        return "railway-analyze"
+    
+    @property
+    def description(self) -> str:
+        return "Analyze a YouTube channel using Railway.app API"
+    
+    @property
+    def timeout(self) -> float:
+        return self.DEFAULT_TIMEOUT
+    
+    @property
+    def input_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "youtube_channel_url": {
+                    "type": "string",
+                    "description": "URL of the YouTube channel to analyze"
+                }
+            },
+            "required": ["youtube_channel_url"],
+        }
+    
+    def build_curl_command(self, arguments: Optional[Dict[str, Any]] = None) -> List[str]:
+        if not arguments:
+            raise ValueError("Arguments are required")
+            
+        youtube_channel_url = arguments.get("youtube_channel_url")
+        if not youtube_channel_url:
+            raise ValueError("youtube_channel_url is required")
+            
+        base_url = os.getenv("RAILWAY_API_URL", "https://railway1-production-9936.up.railway.app")
+        url = f"{base_url}/analyze"
+        
+        data = {"youtube_channel_url": youtube_channel_url}
+            
+        command = [
+            "curl",
+            "-X", "POST",
+            "-H", "Content-Type: application/json",
+            "-H", "accept: application/json",
+            "--fail-with-body",
+            "--max-time", str(self.timeout),
+            "-d", json.dumps(data),
+            url
+        ]
+        
+        return command
+
  

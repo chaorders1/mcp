@@ -8,7 +8,7 @@ import mcp.server.stdio
 from dotenv import load_dotenv
 
 from .handlers import CurlHandler
-from .handlers.railway import RailwayHealthHandler, RailwayProcessFileHandler, RailWayAnalyzeStatusHandler
+from .handlers.railway import RailwayHealthHandler, RailwayProcessFileHandler, RailWayAnalyzeStatusHandler, RailwayAnalyzeHandler
 from .handlers.ollama import OllamaGenerateHandler
 from .handlers.firecrawl import FirecrawlScrapeHandler
 
@@ -19,6 +19,7 @@ class CurlServer:
             RailwayHealthHandler(),
             RailwayProcessFileHandler(),
             RailWayAnalyzeStatusHandler(),
+            RailwayAnalyzeHandler(),
             OllamaGenerateHandler(),
             FirecrawlScrapeHandler()
         ])
