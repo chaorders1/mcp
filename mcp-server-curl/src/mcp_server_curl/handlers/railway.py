@@ -183,7 +183,7 @@ class RailwayAnalyzeHandler(CurlHandler):
             "properties": {
                 "youtube_channel_url": {
                     "type": "string",
-                    "description": "URL of the YouTube channel to analyze"
+                    "description": "URL of the YouTube channel. For example: https://www.youtube.com/@anthropic-ai/"
                 }
             },
             "required": ["youtube_channel_url"],

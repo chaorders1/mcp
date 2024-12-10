@@ -22,7 +22,7 @@ class ImageDownloadHandler(CurlHandler):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The image URL to download (required)"
+                    "description": "The image URL to download (required). For example:https://upload.wikimedia.org/wikipedia/commons/c/ca/1911_Solvay_conference.jpg"
                 },
                 "output_path": {
                     "type": "string",

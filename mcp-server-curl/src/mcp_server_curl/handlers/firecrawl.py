@@ -22,7 +22,7 @@ class FirecrawlScrapeHandler(CurlHandler):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The webpage URL to scrape (required)"
+                    "description": "The webpage URL to scrape (required)."
                 },
                 "formats": {
                     "type": "array",
@@ -32,7 +32,7 @@ class FirecrawlScrapeHandler(CurlHandler):
                         "type": "string",
                         "enum": ["markdown", "html", "links"]
                     },
-                    "description": "Available formats: markdown, html, links"
+                    "description": "Available formats: markdown, html, links (default: markdown)"
                 }
             },
             "required": ["url"],
