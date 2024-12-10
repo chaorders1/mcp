@@ -14,10 +14,10 @@ import mcp.server.stdio
 @dataclass
 class FFmpegOperation:
     id: str
-    status: str
-    input_file: str
-    output_file: str
-    command: list[str]
+    status: str = "pending"
+    input_file: str = ""
+    output_file: str = ""
+    command: list[str] = None
     progress: float = 0.0
 
 class FFmpegWrapper:
@@ -32,51 +32,34 @@ class FFmpegWrapper:
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
             
+    def _create_operation(self, op_type: str, input_path: Path, output_path: Path, 
+                         command: list[str]) -> FFmpegOperation:
+        """Helper method to reduce code duplication in operation creation"""
+        operation_id = f"{op_type}_{len(self.operations)}"
+        operation = FFmpegOperation(
+            id=operation_id,
+            input_file=str(input_path),
+            output_file=str(output_path),
+            command=command
+        )
+        self.operations[operation_id] = operation
+        return operation
+
     async def convert_media(self, input_file: str, output_format: str) -> FFmpegOperation:
-        operation_id = f"conv_{len(self.operations)}"
         input_path = self.work_dir / input_file
         output_file = input_path.with_suffix(f".{output_format}")
-        
-        command = [
-            "ffmpeg", "-i", str(input_path),
-            "-y",  # Overwrite output file if exists
-            str(output_file)
-        ]
-        
-        operation = FFmpegOperation(
-            id=operation_id,
-            status="pending",
-            input_file=str(input_path),
-            output_file=str(output_file),
-            command=command
-        )
-        
-        self.operations[operation_id] = operation
-        return operation
+        command = ["ffmpeg", "-i", str(input_path), "-y", str(output_file)]
+        return self._create_operation("conv", input_path, output_file, command)
         
     async def extract_audio(self, input_file: str) -> FFmpegOperation:
-        operation_id = f"audio_{len(self.operations)}"
         input_path = self.work_dir / input_file
         output_file = input_path.with_suffix(".mp3")
-        
         command = [
             "ffmpeg", "-i", str(input_path),
-            "-vn",  # Disable video
-            "-acodec", "libmp3lame",
-            "-y",
+            "-vn", "-acodec", "libmp3lame", "-y",
             str(output_file)
         ]
-        
-        operation = FFmpegOperation(
-            id=operation_id,
-            status="pending",
-            input_file=str(input_path),
-            output_file=str(output_file),
-            command=command
-        )
-        
-        self.operations[operation_id] = operation
-        return operation
+        return self._create_operation("audio", input_path, output_file, command)
 
 # Initialize the FFmpeg wrapper with a work directory
 work_dir = Path.home() / ".mcp-ffmpeg"
@@ -143,19 +126,16 @@ async def handle_list_tools() -> list[types.Tool]:
 async def handle_call_tool(
     name: str, arguments: dict | None
 ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
-    """Handle FFmpeg operation requests."""
+    """Simplified tool handler"""
     if not ffmpeg.validate_ffmpeg():
-        return [types.TextContent(
-            type="text",
-            text="Error: FFmpeg is not installed or not accessible",
-        )]
+        return [types.TextContent(type="text", 
+                text="Error: FFmpeg is not installed or not accessible")]
 
     if not arguments:
-        raise ValueError("Missing arguments")
+        return [types.TextContent(type="text", text="Error: Missing arguments")]
 
-    operation: Optional[FFmpegOperation] = None
-    
     try:
+        operation = None
         if name == "convert-media":
             input_file = arguments.get("input_file")
             output_format = arguments.get("output_format")
@@ -168,45 +148,41 @@ async def handle_call_tool(
             if not input_file:
                 raise ValueError("Missing input_file")
             operation = await ffmpeg.extract_audio(input_file)
-            
         else:
-            raise ValueError(f"Unknown tool: {name}")
-            
-        if operation:
-            # Start the FFmpeg process
-            process = await asyncio.create_subprocess_exec(
-                *operation.command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            operation.status = "running"
-            await process.wait()
-            
-            if process.returncode == 0:
-                operation.status = "completed"
-                operation.progress = 100.0
-            else:
-                operation.status = "failed"
-            
-            # Notify clients that resources have changed
-            await server.request_context.session.send_resource_list_changed()
-            
-            return [types.TextContent(
-                type="text",
-                text=f"Operation {operation.id} {operation.status}",
-            )]
+            return [types.TextContent(type="text", 
+                    text=f"Error: Unknown tool: {name}")]
+
+        # Execute FFmpeg operation
+        process = await asyncio.create_subprocess_exec(
+            *operation.command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        operation.status = "running"
+        await process.wait()
+        operation.status = "completed" if process.returncode == 0 else "failed"
+        operation.progress = 100.0 if process.returncode == 0 else 0.0
+        
+        await server.request_context.session.send_resource_list_changed()
+        return [types.TextContent(type="text", 
+                text=f"Operation {operation.id} {operation.status}")]
             
     except Exception as e:
         if operation:
             operation.status = "failed"
-        return [types.TextContent(
-            type="text",
-            text=f"Error: {str(e)}",
-        )]
+        return [types.TextContent(type="text", text=f"Error: {str(e)}")]
 
 def main():
     async def run():
+        # Ensure work directory exists
+        work_dir = Path.home() / ".mcp-ffmpeg"
+        work_dir.mkdir(exist_ok=True)
+        
+        # Initialize FFmpeg wrapper (this will trigger auto-installation if needed)
+        global ffmpeg
+        ffmpeg = FFmpegWrapper(work_dir)
+        
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
             await server.run(
                 read_stream,

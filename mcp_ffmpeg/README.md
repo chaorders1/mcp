@@ -25,9 +25,11 @@ The server implements two main tools:
 
 ## Requirements
 
-- FFmpeg must be installed on the system
 - Python 3.10 or higher
 - macOS (currently supported platform)
+
+Note: On macOS, FFmpeg will be automatically installed using Homebrew if not already present.
+For other platforms, please install FFmpeg manually before using this package.
 
 ## Configuration
 
@@ -52,6 +54,11 @@ brew install ffmpeg
 ```bash
 pip install mcp-ffmpeg
 ```
+
+The package will automatically:
+1. Create necessary working directories
+2. Install FFmpeg (on macOS) if not present
+3. Set up all required Python dependencies
 
 #### Claude Desktop Configuration
 
