@@ -9,7 +9,7 @@ import mcp.server.stdio
 from dotenv import load_dotenv
 
 from .handlers import CurlHandler
-from .handlers.railway import RailwayHealthHandler, RailwayProcessFileHandler, RailWayYoutubeChanelAnalyzeHandler, RailWayAnalyzeStatusHandler
+from .handlers.railway import RailwayHealthHandler, RailwayProcessFileHandler, RailWayYoutubeChannelAnalyzeHandler, RailWayAnalyzeStatusHandler
 from .handlers.ollama import OllamaGenerateHandler
 from .handlers.firecrawl import FirecrawlScrapeHandler
 
@@ -19,7 +19,7 @@ class CurlServer:
         self._register_handlers([
             RailwayHealthHandler(),
             RailwayProcessFileHandler(),
-            RailWayYoutubeChanelAnalyzeHandler(),
+            RailWayYoutubeChannelAnalyzeHandler(),
             RailWayAnalyzeStatusHandler(),
             OllamaGenerateHandler(),
             FirecrawlScrapeHandler()
