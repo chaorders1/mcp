@@ -4,29 +4,33 @@ A Model Context Protocol (MCP) server that enables executing curl commands throu
 
 ## Components
 
-### Resources
+### Modular Handlers
 
-The server implements curl operations with:
-- Custom curl:// URI scheme for accessing operation status
-- Each operation resource has an ID, status, and response information
-- Supports tracking of HTTP requests and responses
-- Pre-configured templates for common API services
+The server implements a modular handler system for different API services:
 
-### Tools
+1. Railway Handlers:
+   - `railway-health`: Check health status of Railway.app service
+   - `railway-process-file`: Process files through Railway.app API
 
-The server implements several main tools:
+2. Ollama Handler:
+   - `ollama-generate`: Generate text using Ollama models
+   - Supports model selection, temperature control, and streaming
 
-1. ollama-generate: Generate text using Ollama models
-   - Takes "model" and "prompt" as required arguments
-   - Supports temperature parameter for generation control
+3. Firecrawl Handler:
+   - `firecrawl-scrape`: Web scraping operations
+   - Supports multiple output formats (markdown, html, links)
 
-2. firecrawl-scrape: Web scraping operations
-   - Takes "url" as required argument
-   - Supports multiple output formats
+### Adding New Handlers
 
-3. railway-process: Process files through Railway.app
-   - Takes "file_path" as required argument
-   - Supports various processing options
+The server uses a plugin-like architecture for handlers. To add a new handler:
+
+1. Create a new handler class in the `handlers` directory
+2. Inherit from `CurlHandler` base class
+3. Implement required methods:
+   - `name`: Handler identifier
+   - `description`: Handler description
+   - `input_schema`: JSON Schema for inputs
+   - `build_curl_command`: Method to construct curl command
 
 ## Requirements
 
@@ -61,7 +65,7 @@ pip install mcp-server-curl
 
 The package will automatically:
 1. Set up all required Python dependencies
-2. Configure default templates
+2. Configure default handlers
 3. Prepare for API interactions
 
 #### Claude Desktop Configuration
@@ -125,6 +129,61 @@ Note: You'll need to set PyPI credentials via environment variables or command f
 - Token: `--token` or `UV_PUBLISH_TOKEN`
 - Or username/password: `--username`/`UV_PUBLISH_USERNAME` and `--password`/`UV_PUBLISH_PASSWORD`
 
+### Adding New Handlers
+
+To add a new handler:
+
+1. Create a new file in `handlers` directory:
+```python
+import os
+import json
+from typing import Any, Dict, List, Optional
+from . import CurlHandler
+
+class MyNewHandler(CurlHandler):
+    @property
+    def name(self) -> str:
+        return "my-new-handler"
+    
+    @property
+    def description(self) -> str:
+        return "Description of my new handler"
+    
+    @property
+    def input_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                # Define your input schema
+            },
+            "required": [],
+        }
+    
+    def build_curl_command(self, arguments: Optional[Dict[str, Any]] = None) -> List[str]:
+        # Build and return curl command as a list of strings
+        return [
+            "curl",
+            "-X", "POST",
+            "-H", "Content-Type: application/json",
+            "--fail-with-body",
+            # Add more curl options as needed
+            "your-api-url"
+        ]
+```
+
+2. Register the handler in `server.py`:
+```python
+from .handlers.my_new import MyNewHandler
+
+class CurlServer:
+    def __init__(self):
+        self.handlers: Dict[str, CurlHandler] = {}
+        self._register_handlers([
+            # ... existing handlers ...
+            MyNewHandler()
+        ])
+```
+
 ### Testing
 
 To run the test client:
@@ -132,10 +191,7 @@ To run the test client:
 mcp-server-curl-client
 ```
 
-The client will perform test operations including:
-1. Ollama text generation
-2. Firecrawl web scraping
-3. Railway.app file processing
+The client will perform test operations using the registered handlers.
 
 ### Debugging
 
