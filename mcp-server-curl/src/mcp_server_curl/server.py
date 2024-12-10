@@ -11,6 +11,8 @@ from .handlers import CurlHandler
 from .handlers.railway import RailwayHealthHandler, RailwayProcessFileHandler, RailWayAnalyzeStatusHandler, RailwayAnalyzeHandler
 from .handlers.ollama import OllamaGenerateHandler
 from .handlers.firecrawl import FirecrawlScrapeHandler
+from .handlers.ideogram import IdeogramGenerateHandler
+from .handlers.imagedownload import ImageDownloadHandler
 
 class CurlServer:
     def __init__(self):
@@ -21,7 +23,9 @@ class CurlServer:
             RailWayAnalyzeStatusHandler(),
             RailwayAnalyzeHandler(),
             OllamaGenerateHandler(),
-            FirecrawlScrapeHandler()
+            FirecrawlScrapeHandler(),
+            IdeogramGenerateHandler(),
+            ImageDownloadHandler(),
         ])
     
     def _register_handlers(self, handlers: List[CurlHandler]):
