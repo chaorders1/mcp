@@ -1,9 +1,12 @@
 import os
-from typing import Any, Dict, List, Optional
 import json
+from typing import Any, Dict, List, Optional
 from . import CurlHandler
 
 class RailwayHealthHandler(CurlHandler):
+    # Default timeout for health checks
+    DEFAULT_TIMEOUT = 30
+    
     @property
     def name(self) -> str:
         return "railway-health"
@@ -20,6 +23,10 @@ class RailwayHealthHandler(CurlHandler):
             "required": [],
         }
     
+    @property
+    def timeout(self) -> float:
+        return self.DEFAULT_TIMEOUT
+    
     def build_curl_command(self, arguments: Optional[Dict[str, Any]] = None) -> List[str]:
         base_url = os.getenv("RAILWAY_API_URL", "https://railway.app")
         url = f"{base_url}/health"
@@ -29,10 +36,14 @@ class RailwayHealthHandler(CurlHandler):
             "-X", "GET",
             "-H", "Content-Type: application/json",
             "--fail-with-body",
+            "--max-time", str(self.timeout),
             url
         ]
 
 class RailwayProcessFileHandler(CurlHandler):
+    # Default timeout for file processing
+    DEFAULT_TIMEOUT = 60
+    
     @property
     def name(self) -> str:
         return "railway-process-file"
@@ -40,6 +51,10 @@ class RailwayProcessFileHandler(CurlHandler):
     @property
     def description(self) -> str:
         return "Process a file using Railway.app API"
+    
+    @property
+    def timeout(self) -> float:
+        return self.DEFAULT_TIMEOUT
     
     @property
     def input_schema(self) -> Dict[str, Any]:
@@ -86,129 +101,28 @@ class RailwayProcessFileHandler(CurlHandler):
             "-X", "POST",
             "-H", "Content-Type: application/json",
             "--fail-with-body",
+            "--max-time", str(self.timeout),
             "-d", json.dumps(data),
             url
         ]
         
         return command 
 
-class RailWayYoutubeChannelAnalyzeHandler(CurlHandler):
-    @property
-    def name(self) -> str:
-        return "railway-youtube-channel-analyze"
-    
-    @property
-    def description(self) -> str:
-        return "Start an asynchronous YouTube channel analysis. Returns a task_id that can be used with railway-analyze-status to check progress. Analysis typically takes about 90 seconds."
-    
-    @property
-    def input_schema(self) -> Dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "youtube_channel_url": {
-                    "type": "string",
-                    "description": "URL of the YouTube channel to analyze"
-                }
-            },
-            "required": ["youtube_channel_url"],
-        }
-    
-    def build_curl_command(self, arguments: Optional[Dict[str, Any]] = None) -> List[str]:
-        if not arguments:
-            raise ValueError("Arguments are required")
-            
-        channel_url = arguments.get("youtube_channel_url")
-        if not channel_url:
-            raise ValueError("youtube_channel_url is required")
-            
-        base_url = os.getenv("RAILWAY_API_URL", "https://railway.app")
-        url = f"{base_url}/analyze"
-        
-        data = {"youtube_channel_url": channel_url}
-            
-        command = [
-            "curl",
-            "-X", "POST",
-            "-H", "Content-Type: application/json",
-            "-H", "accept: application/json",
-            "--fail-with-body",
-            "-d", json.dumps(data),
-            url
-        ]
-        
-        return command
-
-    async def handle(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        # Extract URL from various input formats
-        url = None
-        if isinstance(arguments, dict):
-            for key, value in arguments.items():
-                if isinstance(value, str) and ('youtube' in value.lower() or value.startswith('@')):
-                    url = value
-                    if url.startswith('@'):
-                        url = f"https://www.youtube.com/{url}"
-                    arguments = {"youtube_channel_url": url}
-                    break
-
-        if not url:
-            return {
-                "status": "error",
-                "message": "Could not find a valid YouTube channel URL in the input"
-            }
-
-        result = await super().handle(arguments)
-        
-        # Parse result only if it's a string
-        if isinstance(result, str):
-            try:
-                response = json.loads(result)
-            except json.JSONDecodeError as e:
-                return {
-                    "status": "error",
-                    "message": f"Failed to parse API response: {str(e)}",
-                    "raw_response": result
-                }
-        else:
-            response = result
-            
-        # Extract the actual API response from the wrapper
-        if isinstance(response, dict) and 'output' in response:
-            try:
-                api_response = json.loads(response['output'])
-            except json.JSONDecodeError as e:
-                return {
-                    "status": "error",
-                    "message": f"Failed to parse API output: {str(e)}",
-                    "raw_response": response
-                }
-        else:
-            api_response = response
-            
-        # Check if we got a valid response with task_id
-        task_id = api_response.get('data', {}).get('task_id')
-        if not task_id:
-            return {
-                "status": "error",
-                "message": "API did not return a task_id",
-                "raw_response": api_response
-            }
-            
-        return {
-            "status": api_response.get('status', 'pending'),
-            "message": "Analysis started successfully. Please check status using railway-analyze-status with the provided task_id.",
-            "estimated_time": "90 seconds",
-            "task_id": task_id,
-        }
-
 class RailWayAnalyzeStatusHandler(CurlHandler):
+    # Default timeout for status checks
+    DEFAULT_TIMEOUT = 30
+    
     @property
     def name(self) -> str:
         return "railway-analyze-status"
     
     @property
     def description(self) -> str:
-        return "Check the status of a YouTube channel analysis task. Analysis typically takes about 90 seconds to complete."
+        return "Check the status of an analysis task using its task_id"
+    
+    @property
+    def timeout(self) -> float:
+        return self.DEFAULT_TIMEOUT
     
     @property
     def input_schema(self) -> Dict[str, Any]:
@@ -217,7 +131,7 @@ class RailWayAnalyzeStatusHandler(CurlHandler):
             "properties": {
                 "task_id": {
                     "type": "string",
-                    "description": "Task ID returned from railway-youtube-channel-analyze"
+                    "description": "The task ID to check status for"
                 }
             },
             "required": ["task_id"],
@@ -231,76 +145,19 @@ class RailWayAnalyzeStatusHandler(CurlHandler):
         if not task_id:
             raise ValueError("task_id is required")
             
-        base_url = os.getenv("RAILWAY_API_URL", "https://railway.app")
+        base_url = os.getenv("RAILWAY_API_URL", "https://railway1-production-9936.up.railway.app")
         url = f"{base_url}/analyze/status?task_id={task_id}"
         
         command = [
             "curl",
             "-X", "POST",
+            "-H", "Content-Type: application/json",
             "-H", "accept: application/json",
             "--fail-with-body",
-            "-d", "",
+            "--max-time", str(self.timeout),
             url
         ]
         
-        return command
+        return command 
 
-    async def handle(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        result = await super().handle(arguments)
-        
-        # Parse result only if it's a string
-        if isinstance(result, str):
-            try:
-                response = json.loads(result)
-            except json.JSONDecodeError as e:
-                return {
-                    "status": "error",
-                    "message": f"Failed to parse API response: {str(e)}",
-                    "raw_response": result
-                }
-        else:
-            response = result
-            
-        # Extract the actual API response from the wrapper
-        if isinstance(response, dict) and 'output' in response:
-            try:
-                api_response = json.loads(response['output'])
-            except json.JSONDecodeError as e:
-                return {
-                    "status": "error",
-                    "message": f"Failed to parse API output: {str(e)}",
-                    "raw_response": response
-                }
-        else:
-            api_response = response
-        
-        # Get status and data from API response
-        status = api_response.get("status", "unknown")
-        data = api_response.get("data", {})
-        error = api_response.get("error")
-        
-        if error:
-            return {
-                "status": "failed",
-                "error": error,
-                "message": "Analysis failed"
-            }
-            
-        if status == "completed":
-            return {
-                "status": "completed",
-                "data": data,
-                "message": "Analysis completed successfully"
-            }
-        elif status == "processing":
-            return {
-                "status": "processing",
-                "message": "Analysis is still in progress",
-                "estimated_time_remaining": "Please check again in a few seconds"
-            }
-        else:
-            return {
-                "status": status,
-                "message": f"Unexpected status: {status}",
-                "raw_response": api_response
-            }
+ 
