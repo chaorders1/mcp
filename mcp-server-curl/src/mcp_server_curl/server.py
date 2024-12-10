@@ -64,10 +64,10 @@ class TemplateManager:
                 "auth_env_key": "FIRECRAWL_API_KEY"
             },
             "railway": {
-                "base_url": os.getenv("RAILWAY_API_URL", "https://railway1-production-9936.up.railway.app"),
+                "base_url": os.getenv("RAILWAY_API_URL", "https://railway.app"),
                 "endpoints": {
                     "file": "/file",
-                    "status": "/status"
+                    "health": "/health"
                 }
             }
         }
@@ -272,14 +272,12 @@ async def handle_list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
-            name="railway-status",
-            description="Check status of a Railway.app operation",
+            name="railway-health",
+            description="Check health status of Railway.app service",
             inputSchema={
                 "type": "object",
-                "properties": {
-                    "operation_id": {"type": "string"},
-                },
-                "required": ["operation_id"],
+                "properties": {},
+                "required": [],
             },
         ),
     ]
@@ -293,12 +291,37 @@ async def handle_call_tool(
         return [types.TextContent(type="text", 
                 text="Error: curl is not installed or not accessible")]
 
-    if not arguments:
-        return [types.TextContent(type="text", text="Error: Missing arguments")]
-
     try:
         operation = None
-        if name == "ollama-generate":
+        if name == "railway-health":
+            operation = await curl.execute_request(
+                "railway",
+                "/health",
+                method="GET",
+                headers={"Content-Type": "application/json"}
+            )
+        elif name == "railway-process-file":
+            if not arguments:
+                return [types.TextContent(type="text", text="Error: Missing arguments")]
+            file_path = arguments.get("file_path")
+            if not file_path:
+                raise ValidationError("Missing file_path")
+            
+            data = {"file_path": file_path}
+            if "format" in arguments:
+                data["format"] = arguments["format"]
+            if "options" in arguments:
+                data["options"] = arguments["options"]
+                
+            operation = await curl.execute_request(
+                "railway",
+                "/file",
+                method="POST",
+                headers={"Content-Type": "application/json"},
+                data=data
+            )
+            
+        elif name == "ollama-generate":
             model = arguments.get("model", "llama3.2:latest")
             prompt = arguments.get("prompt")
             if not prompt:
@@ -334,38 +357,6 @@ async def handle_call_tool(
                 method="POST",
                 headers={"Content-Type": "application/json"},
                 data=data
-            )
-            
-        elif name == "railway-process-file":
-            file_path = arguments.get("file_path")
-            if not file_path:
-                raise ValidationError("Missing file_path")
-            
-            data = {"file_path": file_path}
-            if "format" in arguments:
-                data["format"] = arguments["format"]
-            if "options" in arguments:
-                data["options"] = arguments["options"]
-                
-            operation = await curl.execute_request(
-                "railway",
-                "/file",
-                method="POST",
-                headers={"Content-Type": "application/json"},
-                data=data
-            )
-            
-        elif name == "railway-status":
-            operation_id = arguments.get("operation_id")
-            if not operation_id:
-                raise ValidationError("Missing operation_id")
-                
-            operation = await curl.execute_request(
-                "railway",
-                "/status",
-                method="GET",
-                headers={"Content-Type": "application/json"},
-                data={"operation_id": operation_id}
             )
             
         else:
