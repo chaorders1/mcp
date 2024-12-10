@@ -1,0 +1,18 @@
+[project]
+name = "my-1st-mcp"
+version = "0.1.0"
+description = "This is my 1st MCP"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [ "mcp>=1.1.1", "anthropic>=0.7.0", "python-dotenv>=1.0.0"]
+[[project.authors]]
+name = "chaorders1"
+email = "1031luy@gmail.com"
+
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[project.scripts]
+my-1st-mcp = "my_1st_mcp:server_main"
+my-1st-mcp-client = "my_1st_mcp:client_main"
