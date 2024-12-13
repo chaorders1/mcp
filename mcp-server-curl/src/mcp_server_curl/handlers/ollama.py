@@ -17,11 +17,6 @@ class OllamaGenerateHandler(CurlHandler):
         return {
             "type": "object",
             "properties": {
-                "model": {
-                    "type": "string",
-                    "default": "llama3.2:latest",
-                    "description": "The model to use for text generation (default: llama3.2:latest)"
-                },
                 "prompt": {
                     "type": "string",
                     "description": "The input text prompt for generation (required)"
@@ -50,12 +45,11 @@ class OllamaGenerateHandler(CurlHandler):
         if not prompt:
             raise ValueError("prompt is required")
             
-        model = arguments.get("model", "llama3.2:latest")
         base_url = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434")
         url = f"{base_url}/api/generate"
         
         data = {
-            "model": model,
+            "model": "llama3.2:latest",
             "prompt": prompt,
             "temperature": arguments.get("temperature", 0.7),
             "stream": arguments.get("stream", False)

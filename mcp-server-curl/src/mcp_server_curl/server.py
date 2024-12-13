@@ -13,6 +13,7 @@ from .handlers.ollama import OllamaGenerateHandler
 from .handlers.firecrawl import FirecrawlScrapeHandler
 from .handlers.ideogram import IdeogramGenerateHandler
 from .handlers.imagedownload import ImageDownloadHandler
+from .handlers.openai import OpenAIChatHandler
 
 class CurlServer:
     def __init__(self):
@@ -26,6 +27,7 @@ class CurlServer:
             FirecrawlScrapeHandler(),
             IdeogramGenerateHandler(),
             ImageDownloadHandler(),
+            OpenAIChatHandler(),
         ])
     
     def _register_handlers(self, handlers: List[CurlHandler]):
